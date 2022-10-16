@@ -21,13 +21,15 @@ mod audio;
 mod input;
 mod options;
 mod video;
-mod rpcserver;
+//mod rustboyadvance_jsonrpcserver;
 
 use futures::executor::block_on;
 
 use rustboyadvance_core::prelude::*;
 
 use rustboyadvance_utils::FpsCounter;
+
+use rustboyadvance_jsonrpcserver::start_server;
 
 const LOG_DIR: &str = ".logs";
 
@@ -63,10 +65,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
 
+
+
     info!("Initializing JSON RPC server");
-    let testComms = block_on(rpcserver::run_server());
+    let testComms =  (start_server());
 
-
+/*
     info!("Initializing SDL2 context");
     let sdl_context = sdl2::init().expect("failed to initialize sdl2");
 
@@ -246,7 +250,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             };
         }
-    }
+    }*/
 
     Ok(())
 }

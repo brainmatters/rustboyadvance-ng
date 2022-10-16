@@ -25,6 +25,9 @@
 // DEALINGS IN THE SOFTWARE.
 
 //! Example that shows how to broadcast to all active subscriptions using `tokio::sync::broadcast`.
+extern crate log;
+use flexi_logger;
+use flexi_logger::*;
 
 use std::net::SocketAddr;
 
@@ -41,14 +44,16 @@ use tokio_stream::wrappers::BroadcastStream;
 const NUM_SUBSCRIPTION_RESPONSES: usize = 5;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
-	tracing_subscriber::FmtSubscriber::builder()
+pub async fn start_server() -> anyhow::Result<()> {
+	/*tracing_subscriber::FmtSubscriber::builder()
 		.with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
 		.try_init()
-		.expect("setting default subscriber failed");
+		.expect("setting default subscriber failed");*/
 
 	let addr = run_server().await?;
 	let url = format!("ws://{}", addr);
+
+	println!("started jsonrpc server at {}",url);
 
 	let client1 = WsClientBuilder::default().build(&url).await?;
 	let client2 = WsClientBuilder::default().build(&url).await?;
@@ -64,6 +69,12 @@ async fn main() -> anyhow::Result<()> {
 }
 
 pub async fn run_server() -> anyhow::Result<SocketAddr> {
+
+
+    let handle = tokio::runtime::Handle::current();
+    handle.enter();
+
+
 	let server = WsServerBuilder::default().build("127.0.0.1:0").await?;
 	let mut module = RpcModule::new(());
 	let (tx, _rx) = broadcast::channel(16);
@@ -89,6 +100,9 @@ pub async fn run_server() -> anyhow::Result<SocketAddr> {
 	})?;
 	let addr = server.local_addr()?;
 	server.start(module)?;
+
+	
+
 	Ok(addr)
 }
 
