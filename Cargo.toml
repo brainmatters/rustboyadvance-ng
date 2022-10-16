@@ -4,6 +4,7 @@ members = [
     "arm7tdmi",
     "utils",
     "platform/rustboyadvance-sdl2",
+    "platform/rustboyadvance-sdl2-rpc",
     "platform/rustboyadvance-libretro",
     # "platform/rustboyadvance-minifb", - DEPRECATED
     "platform/rustboyadvance-wasm",
@@ -11,7 +12,7 @@ members = [
     "fps_bench"
 ]
 
-default-members = ["platform/rustboyadvance-sdl2"]
+default-members = ["platform/rustboyadvance-sdl2-rpc"]
 
 
 [profile.dev]
