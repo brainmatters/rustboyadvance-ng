@@ -1,120 +1,103 @@
-// Copyright 2019-2021 Parity Technologies (UK) Ltd.
-//
-// Permission is hereby granted, free of charge, to any
-// person obtaining a copy of this software and associated
-// documentation files (the "Software"), to deal in the
-// Software without restriction, including without
-// limitation the rights to use, copy, modify, merge,
-// publish, distribute, sublicense, and/or sell copies of
-// the Software, and to permit persons to whom the Software
-// is furnished to do so, subject to the following
-// conditions:
-//
-// The above copyright notice and this permission notice
-// shall be included in all copies or substantial portions
-// of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-// ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-// TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-// PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-// SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-// IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-// DEALINGS IN THE SOFTWARE.
+use std::env;
 
-//! Example that shows how to broadcast to all active subscriptions using `tokio::sync::broadcast`.
-extern crate log;
-use flexi_logger;
-use flexi_logger::*;
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
-use std::net::SocketAddr;
+use nimiq_jsonrpc_client::http::HttpClient;
+use nimiq_jsonrpc_server::{Config, Server};
 
-use futures::future;
-use futures::StreamExt;
-use jsonrpsee::core::client::{Subscription, SubscriptionClientT};
-use jsonrpsee::core::error::SubscriptionClosed;
-use jsonrpsee::rpc_params;
-use jsonrpsee::ws_client::WsClientBuilder;
-use jsonrpsee::ws_server::{RpcModule, WsServerBuilder};
-use tokio::sync::broadcast;
-use tokio_stream::wrappers::BroadcastStream;
+use std::sync::mpsc::{channel, Sender};
 
-const NUM_SUBSCRIPTION_RESPONSES: usize = 5;
+/// You can pass custom types over JSON-RPC, if they implement Serialize and Deserialize.
+#[derive(Debug, Serialize, Deserialize)]
+struct HelloWorldData {
+    a: u32,
+}
+
+/// The trait that defines the RPC interface.
+///
+/// [`nimiq_jsonrpc_derive::proxy`] will derive an implementation that sends a JSON-RPC request, when a method is
+/// called. The default name for that implementation is the trait's name with `Proxy` as suffix. It'll have a
+/// constructor `new` that takes a single argument, an implementer of [`nimiq_jsonrpc_client::Client`].
+///
+#[nimiq_jsonrpc_derive::proxy(name = "HelloWorldProxy")]
+#[async_trait]
+trait HelloWorld {
+    type Error;
+
+    async fn hello(&mut self, name: String, x: HelloWorldData) -> Result<String, Self::Error>;
+}
+
+/// Define a service that implements our `HelloWorld` RPC interface.
+struct HelloWorldService;
+
+/// Then we implement the service. The macro `#[nimiq_jsonrpc_derive::service]` will implement a
+/// `nimiq_jsonrpc_server::Dispatcher` for it, which is needed to interpret a request and call the appropriate method.
+///
+/// Luckily the macro does all the details for us.
+///
+#[nimiq_jsonrpc_derive::service]
+#[async_trait]
+impl HelloWorld for HelloWorldService {
+    /// All methods must return a [`Result`], where the error can be converted into a [`nimiq_jsonrpc_core::RpcError`].
+    /// You can just use [`nimiq_jsonrpc_core::RpcError`] directly and use one of its constructors, or `()`, which will
+    /// always convert to an internal error.
+    type Error = ();
+
+    /// Here we implement a method that then can be called from a remote client.
+    async fn hello(&mut self, name: String, x: HelloWorldData) -> Result<String, Self::Error> {
+        Ok(format!("Hello, {}: x={:?}", name, x))
+    }
+}
 
 #[tokio::main]
-pub async fn start_server() -> anyhow::Result<()> {
-	/*tracing_subscriber::FmtSubscriber::builder()
-		.with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-		.try_init()
-		.expect("setting default subscriber failed");*/
+pub async fn start_server(sender: Sender<String>) {
+    // Load environment variables from `.env` file. You can set the RUST_LOG there, if you like.
+    dotenv::dotenv().ok();
 
-	let addr = run_server().await?;
-	let url = format!("ws://{}", addr);
+    // Default to displaying our debug messages, and only info messages otherwise.
+  /*  if env::var("RUST_LOG").is_err() {
+        env::set_var(
+            "RUST_LOG",
+            "info,nimiq_jsonrpc_core=debug,nimiq_jsonrpc_server=debug,nimiq_jsonrpc_client=debug",
+        );
+    }
+*/
+   // pretty_env_logger::init();
 
-	println!("started jsonrpc server at {}",url);
+    let mut config = Config::default();
 
-	let client1 = WsClientBuilder::default().build(&url).await?;
-	let client2 = WsClientBuilder::default().build(&url).await?;
-	let sub1: Subscription<i32> = client1.subscribe("subscribe_hello", rpc_params![], "unsubscribe_hello").await?;
-	let sub2: Subscription<i32> = client2.subscribe("subscribe_hello", rpc_params![], "unsubscribe_hello").await?;
+    // This is the default:
+    config.bind_to = ([127, 0, 0, 1], 8000).into();
 
-	let fut1 = sub1.take(NUM_SUBSCRIPTION_RESPONSES).for_each(|r| async move { tracing::info!("sub1 rx: {:?}", r) });
-	let fut2 = sub2.take(NUM_SUBSCRIPTION_RESPONSES).for_each(|r| async move { tracing::info!("sub2 rx: {:?}", r) });
+    // JSON-RPC over websocket is enabled by default, but we don't need it in this example.
+    config.enable_websocket = false;
 
-	future::join(fut1, fut2).await;
+    log::info!("Listening on: {}", config.bind_to);
 
-	Ok(())
-}
+    // Start our `FoobarService` as a JSON-RPC server
+    let server = Server::new(config, HelloWorldService);
+    tokio::spawn(async move {
+        server.run().await;
+    });
 
-pub async fn run_server() -> anyhow::Result<SocketAddr> {
+    // The server is running now, so we can connect to it. The `HttpClient` will send all requests as a HTTP POST to
+    // the specified URL.
+    let client = HttpClient::with_url("http://localhost:8000/".parse().unwrap());
 
+    // Next we can use the proxy that we generated earlier and construct it with the client.
+    let mut proxy = HelloWorldProxy::new(client);
 
-    let handle = tokio::runtime::Handle::current();
-    handle.enter();
+    // The proxy implements our `HelloWorld` RPC interface and will send a request to the server, when a method is
+    // called.
+    let retval = proxy
+        .hello("World".to_owned(), HelloWorldData { a: 42 })
+        .await
+        .expect("RPC call failed");
+    log::info!("RPC call returned: {}", retval);
 
+	loop {
 
-	let server = WsServerBuilder::default().build("127.0.0.1:0").await?;
-	let mut module = RpcModule::new(());
-	let (tx, _rx) = broadcast::channel(16);
-	let tx2 = tx.clone();
-
-	std::thread::spawn(move || produce_items(tx2));
-
-	module.register_subscription("subscribe_hello", "s_hello", "unsubscribe_hello", move |_, mut sink, _| {
-		let rx = BroadcastStream::new(tx.clone().subscribe());
-
-		tokio::spawn(async move {
-			match sink.pipe_from_try_stream(rx).await {
-				SubscriptionClosed::Success => {
-					sink.close(SubscriptionClosed::Success);
-				}
-				SubscriptionClosed::RemotePeerAborted => (),
-				SubscriptionClosed::Failed(err) => {
-					sink.close(err);
-				}
-			};
-		});
-		Ok(())
-	})?;
-	let addr = server.local_addr()?;
-	server.start(module)?;
-
-	
-
-	Ok(addr)
-}
-
-// Naive example that broadcasts the produced values to all active subscribers.
-fn produce_items(tx: broadcast::Sender<usize>) {
-	for c in 1..=100 {
-		std::thread::sleep(std::time::Duration::from_secs(1));
-
-		// This might fail if no receivers are alive, could occur if no subscriptions are active...
-		// Also be aware that this will succeed when at least one receiver is alive
-		// Thus, clients connecting at different point in time will not receive
-		// the items sent before the subscription got established.
-		let _ = tx.send(c);
+		log::info!("Listening " );
 	}
 }

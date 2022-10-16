@@ -17,6 +17,9 @@ extern crate log;
 use flexi_logger;
 use flexi_logger::*;
 
+
+use std::sync::mpsc::{channel, Sender};
+
 mod audio;
 mod input;
 mod options;
@@ -64,11 +67,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts = options::Options::from_args();
 
 
-
+    let (tx, rx) = channel();
 
 
     info!("Initializing JSON RPC server");
-    let testComms =  (start_server());
+    let testComms =  (start_server(tx));
+
+    for line in rx {
+        println!("Got this back: {}", line);
+    }
+
 
 /*
     info!("Initializing SDL2 context");
