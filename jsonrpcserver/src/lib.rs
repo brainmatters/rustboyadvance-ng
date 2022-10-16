@@ -40,6 +40,31 @@ impl Commands for RpcCommandServer {
 
         Ok(Response::new(reply))
     }
+
+    async fn getGameTitle(
+        &self,
+        request: Request<MeanRequest>,
+    ) -> Result<Response<MeanResponse>, Status> {
+    } 
+
+    async fn getMemory(
+        &self,
+        request: Request<GetMemoryRequest>,
+    ) -> Result<Response<GetMemoryResponse>, Status> {
+    }
+
+    async fn setMemory(
+        &self,
+        request: Request<SetMemoryRequest>,
+    ) -> Result<Response<SetMemoryResponse>, Status> {
+    }
+
+    async fn sendControllerCommand(
+        &self,
+        request: Request<ControllerCommandRequest>,
+    ) -> Result<Response<ControllerCommandResponse>, Status> {
+    }
+
 }
 
 
