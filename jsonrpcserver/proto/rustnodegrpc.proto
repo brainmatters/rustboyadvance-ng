@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package rustnodegrpc;
 
-service Stats {
+service Commands {
 	rpc Mean (MeanRequest) returns (MeanResponse);
 }
 

@@ -11,6 +11,7 @@ use std::fs;
 use std::io::Cursor;
 use std::path::Path;
 use std::time;
+use std::thread;
 
 #[macro_use]
 extern crate log;
@@ -18,21 +19,20 @@ use flexi_logger;
 use flexi_logger::*;
 
 
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::{channel,sync_channel, SyncSender, TryRecvError};
 
 mod audio;
 mod input;
 mod options;
 mod video;
-//mod rustboyadvance_jsonrpcserver;
-
-use futures::executor::block_on;
+ 
+ 
 
 use rustboyadvance_core::prelude::*;
 
 use rustboyadvance_utils::FpsCounter;
 
-use rustboyadvance_jsonrpcserver::startServer;
+use rustboyadvance_jsonrpcserver::start_server;
 
 const LOG_DIR: &str = ".logs";
 
@@ -67,18 +67,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts = options::Options::from_args();
 
 
-    let (tx, rx) = channel();
+    let (tx, rx) = sync_channel(40);
 
 
-    info!("Initializing JSON RPC server");
-    let testComms =  (startServer(tx));
+    
+    //boot a JSONRPC server with a connected channel in a new thread 
+    thread::spawn(move || { 
+        info!("Initializing JSON RPC server");
+        let testComms =  start_server(tx.clone());
+    });
+   
 
-    for line in rx {
-        println!("Got this back: {}", line);
-    }
 
-
-/*
     info!("Initializing SDL2 context");
     let sdl_context = sdl2::init().expect("failed to initialize sdl2");
 
@@ -142,6 +142,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut event_pump = sdl_context.event_pump()?;
     'running: loop {
         let start_time = time::Instant::now();
+
+
+        //receive commands from remote jsonrpc 
+      /*    for rec in rx {
+            println!("Got this back: {}", rec);
+        }*/
+
+         
+        //println!("{}", rx.try_recv().is_err());   
+        match rx.try_recv() {
+            Ok(res) => {
+                println!("got recv {}",res );
+                 
+            }
+            Err(TryRecvError::Disconnected) =>   {
+                println!("disconnected");
+            }
+
+            Err(TryRecvError::Empty) =>   {
+             //   println!("empty");
+            }
+             
+        }
+
+
+
         for event in event_pump.poll_iter() {
             match event {
                 Event::KeyDown {
@@ -258,7 +284,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             };
         }
-    }*/
+    }
 
     Ok(())
 }
