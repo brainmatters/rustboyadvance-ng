@@ -18,6 +18,7 @@ bit = "^0.1"
 spin_sleep = "0.3.7" 
   
 futures = "0.3"
+tonic = "0.8.2"
 
 
 [target.'cfg(windows)'.build-dependencies]

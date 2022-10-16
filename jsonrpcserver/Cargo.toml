@@ -11,7 +11,9 @@ anyhow = "1.0"
 async-trait = "0.1"
 serde = { version = "1.0 ", features = ["derive"] }
 tokio = { version = "1.9", features = ["sync", "rt-multi-thread", "macros"] }
-nimiq-jsonrpc-core = { path = "./nimiq-jsonrpc/nimiq-jsonrpc-core" }
-nimiq-jsonrpc-derive = { path = "./nimiq-jsonrpc/nimiq-jsonrpc-derive" }
-nimiq-jsonrpc-client = { path = "./nimiq-jsonrpc/nimiq-jsonrpc-client" }
-nimiq-jsonrpc-server = { path = "./nimiq-jsonrpc/nimiq-jsonrpc-server" }
+tonic = "0.6"
+prost = "0.9"
+
+
+[build-dependencies]
+tonic-build = "0.6"

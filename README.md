@@ -32,6 +32,9 @@ WebAssembly Demo: https://michelhe.github.io/rustboyadvance-ng/ ![Deploy](https:
 
 To get started, you need to get a [stable rust toolchain](https://rustup.rs) of version Rust 1.51 or later,
 
+cargo run --release -- ../ruby.gba
+
+
 ## Linux build dependencies
 Install SDL2 dependencies
 

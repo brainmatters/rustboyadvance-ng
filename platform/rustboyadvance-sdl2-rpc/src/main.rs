@@ -32,7 +32,7 @@ use rustboyadvance_core::prelude::*;
 
 use rustboyadvance_utils::FpsCounter;
 
-use rustboyadvance_jsonrpcserver::start_server;
+use rustboyadvance_jsonrpcserver::startServer;
 
 const LOG_DIR: &str = ".logs";
 
@@ -71,7 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
     info!("Initializing JSON RPC server");
-    let testComms =  (start_server(tx));
+    let testComms =  (startServer(tx));
 
     for line in rx {
         println!("Got this back: {}", line);

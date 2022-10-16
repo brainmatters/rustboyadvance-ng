@@ -1,103 +1,43 @@
-use std::env;
+use tonic::{transport::Server, Request, Response, Status};
 
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-
-use nimiq_jsonrpc_client::http::HttpClient;
-use nimiq_jsonrpc_server::{Config, Server};
+use rustnodegrpc::stats_server::{Stats, StatsServer};
+use rustnodegrpc::{MeanRequest, MeanResponse};
 
 use std::sync::mpsc::{channel, Sender};
 
-/// You can pass custom types over JSON-RPC, if they implement Serialize and Deserialize.
-#[derive(Debug, Serialize, Deserialize)]
-struct HelloWorldData {
-    a: u32,
-}
+mod rustnodegrpc;
 
-/// The trait that defines the RPC interface.
-///
-/// [`nimiq_jsonrpc_derive::proxy`] will derive an implementation that sends a JSON-RPC request, when a method is
-/// called. The default name for that implementation is the trait's name with `Proxy` as suffix. It'll have a
-/// constructor `new` that takes a single argument, an implementer of [`nimiq_jsonrpc_client::Client`].
-///
-#[nimiq_jsonrpc_derive::proxy(name = "HelloWorldProxy")]
-#[async_trait]
-trait HelloWorld {
-    type Error;
+#[derive(Default)]
+pub struct MyStats {}
 
-    async fn hello(&mut self, name: String, x: HelloWorldData) -> Result<String, Self::Error>;
-}
+#[tonic::async_trait]
+impl Stats for MyStats {
+    async fn mean(
+        &self,
+        request: Request<MeanRequest>,
+    ) -> Result<Response<MeanResponse>, Status> {
+        let r = request.into_inner();
+        println!("Got a request for: {:?}", &r);
 
-/// Define a service that implements our `HelloWorld` RPC interface.
-struct HelloWorldService;
-
-/// Then we implement the service. The macro `#[nimiq_jsonrpc_derive::service]` will implement a
-/// `nimiq_jsonrpc_server::Dispatcher` for it, which is needed to interpret a request and call the appropriate method.
-///
-/// Luckily the macro does all the details for us.
-///
-#[nimiq_jsonrpc_derive::service]
-#[async_trait]
-impl HelloWorld for HelloWorldService {
-    /// All methods must return a [`Result`], where the error can be converted into a [`nimiq_jsonrpc_core::RpcError`].
-    /// You can just use [`nimiq_jsonrpc_core::RpcError`] directly and use one of its constructors, or `()`, which will
-    /// always convert to an internal error.
-    type Error = ();
-
-    /// Here we implement a method that then can be called from a remote client.
-    async fn hello(&mut self, name: String, x: HelloWorldData) -> Result<String, Self::Error> {
-        Ok(format!("Hello, {}: x={:?}", name, x))
+        let reply = MeanResponse {
+            mean: (r.a + r.b) as f64 / 2.0,
+        };
+        Ok(Response::new(reply))
     }
 }
+
 
 #[tokio::main]
-pub async fn start_server(sender: Sender<String>) {
-    // Load environment variables from `.env` file. You can set the RUST_LOG there, if you like.
-    dotenv::dotenv().ok();
+pub async fn startServer(sender: Sender<String>) -> Result<(), Box<dyn std::error::Error>> {
+    let addr = "127.0.0.1:9800".parse().unwrap();
+    let server = MyStats::default();
 
-    // Default to displaying our debug messages, and only info messages otherwise.
-  /*  if env::var("RUST_LOG").is_err() {
-        env::set_var(
-            "RUST_LOG",
-            "info,nimiq_jsonrpc_core=debug,nimiq_jsonrpc_server=debug,nimiq_jsonrpc_client=debug",
-        );
-    }
-*/
-   // pretty_env_logger::init();
+    println!("StatsServer listening on {}", addr);
 
-    let mut config = Config::default();
+    Server::builder()
+        .add_service(StatsServer::new(server))
+        .serve(addr)
+        .await?;
 
-    // This is the default:
-    config.bind_to = ([127, 0, 0, 1], 8000).into();
-
-    // JSON-RPC over websocket is enabled by default, but we don't need it in this example.
-    config.enable_websocket = false;
-
-    log::info!("Listening on: {}", config.bind_to);
-
-    // Start our `FoobarService` as a JSON-RPC server
-    let server = Server::new(config, HelloWorldService);
-    tokio::spawn(async move {
-        server.run().await;
-    });
-
-    // The server is running now, so we can connect to it. The `HttpClient` will send all requests as a HTTP POST to
-    // the specified URL.
-    let client = HttpClient::with_url("http://localhost:8000/".parse().unwrap());
-
-    // Next we can use the proxy that we generated earlier and construct it with the client.
-    let mut proxy = HelloWorldProxy::new(client);
-
-    // The proxy implements our `HelloWorld` RPC interface and will send a request to the server, when a method is
-    // called.
-    let retval = proxy
-        .hello("World".to_owned(), HelloWorldData { a: 42 })
-        .await
-        .expect("RPC call failed");
-    log::info!("RPC call returned: {}", retval);
-
-	loop {
-
-		log::info!("Listening " );
-	}
+    Ok(())
 }
