@@ -2,8 +2,7 @@
 members = [
     "core",
     "arm7tdmi",
-    "utils",
-    "jsonrpcserver",
+    "utils", 
     "platform/rustboyadvance-sdl2",
     "platform/rustboyadvance-sdl2-rpc",
     "platform/rustboyadvance-libretro",

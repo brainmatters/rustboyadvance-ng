@@ -1,10 +1,11 @@
 [package]
-name = "rustboyadvance_jsonrpcserver"
+name = "grpc_support"
 version = "0.1.0"
 authors = ["Apex Mfer <apexmfer@gmail.com>"]
 edition = "2021"
 
-[dependencies]
+[dependencies] 
+rustboyadvance-core = { path = "../core"}
 log = "0.4" 
 dotenv = "0.15"
 anyhow = "1.0"

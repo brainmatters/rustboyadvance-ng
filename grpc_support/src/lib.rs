@@ -6,13 +6,15 @@ use rustnodegrpc::{MeanRequest, MeanResponse};
 use std::net::SocketAddr;
 use std::sync::mpsc::{channel, SyncSender};
  
-
+ 
+//use crate::rustboyadvance_core::{ GameBoyAdvance  };
+ use rustboyadvance_core::GameBoyAdvance;
 mod rustnodegrpc;
 
 //#[derive(Default)]
 pub struct RpcCommandServer {
  
-    sender: SyncSender<String>
+    
 
 }
  
@@ -36,7 +38,7 @@ impl Commands for RpcCommandServer {
             mean: (r.a + r.b) as f64 / 2.0,
         };
 
-        self.sender.send(reply.mean.to_string() );
+       // self.sender.send(reply.mean.to_string() );
 
         Ok(Response::new(reply))
     }
@@ -47,10 +49,10 @@ impl Commands for RpcCommandServer {
 //need this to be non-blocking
 
 #[tokio::main]
-pub async fn start_server(sender: SyncSender<String>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn start_grpc_server(gba: &mut GameBoyAdvance, port:u32 ) -> Result<(), Box<dyn std::error::Error>> {
     let addr:SocketAddr = "127.0.0.1:9800".parse().unwrap();
     let server = RpcCommandServer {
-        sender 
+          
     };
  
 

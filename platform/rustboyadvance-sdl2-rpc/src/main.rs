@@ -19,6 +19,8 @@ use flexi_logger;
 use flexi_logger::*;
 
 
+use rustboyadvance_core::keypad as gba_keypad;
+
 use std::sync::mpsc::{channel,sync_channel, SyncSender, TryRecvError};
 
 mod audio;
@@ -32,7 +34,6 @@ use rustboyadvance_core::prelude::*;
 
 use rustboyadvance_utils::FpsCounter;
 
-use rustboyadvance_jsonrpcserver::start_server;
 
 const LOG_DIR: &str = ".logs";
 
@@ -67,15 +68,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts = options::Options::from_args();
 
 
-    let (tx, rx) = sync_channel(40);
+  //  let (tx, rx) = sync_channel(40);
 
 
     
-    //boot a JSONRPC server with a connected channel in a new thread 
-    thread::spawn(move || { 
-        info!("Initializing JSON RPC server");
-        let testComms =  start_server(tx.clone());
-    });
+  
    
 
 
@@ -115,6 +112,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         audio_interface,
     ));
 
+
+
+     
+
     // let gba_raw_ptr = Box::into_raw(gba) as usize;
     // static mut gba_raw: usize = 0;
     // unsafe { gba_raw = gba_raw_ptr };
@@ -136,6 +137,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         gba.start_gdbserver(opts.gdbserver_port);
     }
 
+    gba.start_grpcserver(9800);
+
     let mut vsync = true;
     let mut fps_counter = FpsCounter::default();
     const FRAME_TIME: time::Duration = time::Duration::new(0, 1_000_000_000u32 / 60);
@@ -149,12 +152,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Got this back: {}", rec);
         }*/
 
-         
-        //println!("{}", rx.try_recv().is_err());   
-        match rx.try_recv() {
+       // let mut iwram:&[u8] = gba.sysbus.get_iwram();
+
+        let gameTitle:String = gba.get_game_title();
+        let iwram:&[u8] = gba.get_iwram_state();
+
+
+       // gba.save_state()?;
+
+       //press a key 
+       //input::on_keyboard_key_down(gba.get_key_state_mut(), Scancode::A) ;
+
+      
+       let keytype:gba_keypad::Keys = gba_keypad::Keys::Start; 
+
+      
+
+        // println!("Gametitle: {}", gameTitle);   
+      /*   match rx.try_recv() {
             Ok(res) => {
                 println!("got recv {}",res );
-                 
+                input::set_key_state(gba.get_key_state_mut() , keytype , true );
             }
             Err(TryRecvError::Disconnected) =>   {
                 println!("disconnected");
@@ -164,7 +182,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
              //   println!("empty");
             }
              
-        }
+        }*/
 
 
 

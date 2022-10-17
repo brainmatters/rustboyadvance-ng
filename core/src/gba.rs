@@ -7,6 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::gdb_support::{gdb_thread::start_gdb_server_thread, DebuggerRequestHandler};
 
+use crate::grpc_support::{   start_grpc_server  };
+//use rustboyadvance_jsonrpcserver::start_grpc_server;
+
+
 use super::cartridge::Cartridge;
 use super::dma::DmaController;
 use super::gpu::*;
@@ -16,6 +20,9 @@ use super::sched::{EventType, Scheduler, SchedulerConnect, SharedScheduler};
 use super::sound::SoundController;
 use super::sysbus::SysBus;
 use super::timer::Timers;
+
+
+
 
 use super::sound::interface::DynAudioInterface;
 
@@ -211,6 +218,24 @@ impl GameBoyAdvance {
         &mut self.sysbus.io.keyinput
     }
 
+
+    pub fn get_ewram_state(&mut self) -> &[u8] {
+        return &self.sysbus.get_ewram();
+    }
+
+    pub fn get_iwram_state(&mut self) -> &[u8] {
+        return &self.sysbus.get_iwram();
+    }
+
+    pub fn set_ewram_state(&mut self, buffer: Box<[u8]>) {
+        self.sysbus.set_ewram(buffer);
+    }
+
+    pub fn set_iwram_state(&mut self, buffer: Box<[u8]>) {
+        self.sysbus.set_iwram(buffer);
+    }
+
+
     /// Advance the emulation for one frame worth of time
     pub fn frame(&mut self) {
         static mut OVERSHOOT: usize = 0;
@@ -227,6 +252,39 @@ impl GameBoyAdvance {
         }
     }
 
+
+
+
+    pub fn start_grpcserver(&mut self, port: u16) {
+        if self.is_grpcserver_attached() {
+            warn!("grpcserver already attached!");
+        } else {
+
+
+             //boot a JSONRPC server with a connected channel in a new thread 
+         
+                info!("Initializing GRPC server");
+                let testComms = start_grpc_server(self, 9800 );
+            
+
+
+
+           /*   match start_grpc_server_thread(self, port) {
+                Ok(debugger) => {
+                    info!("attached to grpc server, have fun!");
+                   // self.debugger = Some(debugger)
+                }
+                Err(e) => {
+                    error!("failed to start the grpc server: {:?}", e);
+                }
+            }*/
+        }
+    }
+
+
+
+
+
     pub fn start_gdbserver(&mut self, port: u16) {
         if self.is_debugger_attached() {
             warn!("debugger already attached!");
@@ -241,6 +299,13 @@ impl GameBoyAdvance {
                 }
             }
         }
+    }
+    
+
+    //implement me 
+    #[inline]
+    pub fn is_grpcserver_attached(&self) -> bool {
+       return false
     }
 
     #[inline]

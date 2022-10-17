@@ -46,6 +46,7 @@ pub mod gba;
 pub use gba::GameBoyAdvance;
 pub mod dma;
 pub mod gdb_support;
+pub mod grpc_support; 
 pub mod keypad;
 mod mgba_debug;
 pub(crate) mod overrides;

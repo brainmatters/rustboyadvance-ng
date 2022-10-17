@@ -1980,8 +1980,10 @@ name = "rustboyadvance-core"
 version = "0.1.0"
 dependencies = [
  "ansi_term 0.12.1",
+ "anyhow",
  "arm7tdmi",
  "arrayvec 0.5.2",
+ "async-trait",
  "bincode",
  "bit",
  "bit-set",
@@ -1996,6 +1998,7 @@ dependencies = [
  "criterion",
  "crossbeam",
  "debug_stub_derive",
+ "dotenv",
  "enum-primitive-derive",
  "fuzzy-matcher",
  "hex-literal",
@@ -2006,12 +2009,16 @@ dependencies = [
  "nom",
  "num",
  "num-traits 0.2.12",
+ "prost 0.9.0",
  "rustboyadvance-utils",
  "rustyline",
  "serde",
  "sha2",
  "smart-default",
  "time 0.2.22",
+ "tokio",
+ "tonic 0.6.2",
+ "tonic-build",
  "xml-builder",
  "yaml-rust",
  "zip",
@@ -2073,7 +2080,6 @@ dependencies = [
  "ringbuf",
  "rustboyadvance-core",
  "rustboyadvance-utils",
- "rustboyadvance_jsonrpcserver",
  "sdl2",
  "spin_sleep",
  "structopt",
@@ -2106,21 +2112,6 @@ dependencies = [
  "wasm-bindgen-test",
  "web-sys",
  "wee_alloc",
-]
-
-[[package]]
-name = "rustboyadvance_jsonrpcserver"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "dotenv",
- "log 0.4.17",
- "prost 0.9.0",
- "serde",
- "tokio",
- "tonic 0.6.2",
- "tonic-build",
 ]
 
 [[package]]
