@@ -14,7 +14,7 @@ use std::thread;
 
 
 
-use std::sync::mpsc::{channel,sync_channel, SyncSender, Receiver, TryRecvError};
+use std::sync::mpsc::{channel,sync_channel,Sender, SyncSender, Receiver, TryRecvError, RecvError};
 
 
 //send data btwn thread 
@@ -72,37 +72,47 @@ impl Commands for RpcCommandServer {
 #[tokio::main]
 pub async fn start_grpc_server(gba: &mut GameBoyAdvance, port:u32 ) -> Result<(), Box<dyn std::error::Error>> {
    
-    let (txOne, rxOne) = sync_channel(40);
+    let (txOne, rxOne) = sync_channel(50);
 
-   // let (txTwo, rxTwo) = sync_channel(40);
+    let (txTwo, rxTwo) = sync_channel(50);
 
 
 
 
     thread::spawn(move || { 
-        let (txTwo, rxTwo) = sync_channel(40);
+       // let (txTwo, rxTwo) = sync_channel(40);
+      
+       println!("sending {}", "hello" );
+       txOne.send( "hello".to_string() );
+
+       rxTwo.recv();
+
+       println!( "yay ");
  
-        boot_grpc_server( txOne.clone() );
+        boot_grpc_server( txOne );
     });
  
- 
-    match rxOne.try_recv() {
+    //https://doc.rust-lang.org/std/sync/mpsc/struct.Receiver.html
+
+    rxOne.recv();
+    println!( "sending world ");
+    txTwo.send( "world".to_string() );
+
+    /*match rxOne.recv() {
             Ok(res) => {
                 println!("got recv {}",res );
+
+                txTwo.send( "world".to_string() );
 
                 //txTwo.clone().send( "woah lad" );
 
                // input::set_key_state(gba.get_key_state_mut() , keytype , true );
             }
-            Err(TryRecvError::Disconnected) =>   {
+            None  =>   {
                 println!("disconnected");
             }
-
-            Err(TryRecvError::Empty) =>   {
-             //   println!("empty");
-            }
-             
-        } 
+ 
+        } */
   
 
     Ok(())
